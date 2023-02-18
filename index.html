@@ -1,0 +1,88 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>AAAA PONG</title>
+    <style>
+      html,
+      body,
+      canvas {
+        margin: 0px;
+        padding: 0px;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        position: absolute;
+        background: black;
+        z-index: 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <canvas id="glcanvas" tabindex="1"></canvas>
+    <script src="tangle/tangle.js"></script>
+    <!-- Minified and statically hosted version of https://github.com/not-fl3/macroquad/blob/master/js/mq_js_bundle.js -->
+    <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
+    <script type="module">
+      import { Tangle } from "./tangle/tangle.js";
+
+      function load(stream) {
+        var a = stream;
+
+        register_plugins(plugins),
+          typeof Tangle.compileStreaming == "function"
+            ? Tangle.compileStreaming(a)
+                .then((a) => (add_missing_functions_stabs(a), Tangle.instantiate(a, importObject)))
+                .then((a) => {
+                  (wasm_memory = a.exports.memory), (wasm_exports = a.exports);
+                  var b = u32_to_semver(wasm_exports.crate_version());
+                  version != b &&
+                    console.error(
+                      "Version mismatch: gl.js version is: " +
+                        version +
+                        ", rust sapp-wasm crate version is: " +
+                        b
+                    ),
+                    init_plugins(plugins),
+                    a.exports.main();
+                })
+                .catch((a) => {
+                  console.error("WASM failed to load, probably incompatible gl.js version"),
+                    console.error(a);
+                })
+            : a
+                .then(function (a) {
+                  return a.arrayBuffer();
+                })
+                .then(function (a) {
+                  return Tangle.compile(a);
+                })
+                .then(function (a) {
+                  return add_missing_functions_stabs(a), Tangle.instantiate(a, importObject);
+                })
+                .then(function (a) {
+                  (wasm_memory = a.exports.memory), (wasm_exports = a.exports);
+                  var b = u32_to_semver(wasm_exports.crate_version());
+                  version != b &&
+                    console.error(
+                      "Version mismatch: gl.js version is: " +
+                        version +
+                        ", rust sapp-wasm crate version is: " +
+                        b
+                    ),
+                    init_plugins(plugins),
+                    a.exports.main();
+                })
+                .catch((a) => {
+                  console.error("WASM failed to load, probably incompatible gl.js version"),
+                    console.error(a);
+                });
+      }
+    </script>
+    <script>
+      load("target/wasm32-unknown-unknown/debug/pong.wasm");
+    </script>
+
+    <!-- Your compiled wasm file -->
+  </body>
+</html>
