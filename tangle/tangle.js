@@ -581,6 +581,7 @@ var TimeMachine = class {
     this.rust_utilities = rust_utilities;
   }
   static async setup(wasm_binary, imports, fixed_update_interval) {
+  console.log("TimeMachine.SETUP");
     var _a, _b, _c;
     const rust_utilities = await RustUtilities.setup();
     {
@@ -596,17 +597,32 @@ var TimeMachine = class {
       console.log("Not implemented");
     };
     (_c = imports.env).external_log ?? (_c.external_log = (a, b) => external_log(a, b));
+    console.log("PROCESSING BINARY");
+    console.log(wasm_binary);
     wasm_binary = rust_utilities.process_binary(wasm_binary, true, false);
-    const wasm_instance = await WebAssembly.instantiate(wasm_binary, imports);
+    console.log("FINISHED PROCESSING BINARY");
+    const mod = new WebAssembly.Module(wasm_binary);
+    add_missing_functions_stabs(mod);
+    console.log("ADDED FUNCTION STABS");
+    // const wasm_instance = await WebAssembly.instantiate(wasm_binary, imports);
+    const wasm_instance_instance = await WebAssembly.instantiate(mod, {...imports, ...importObject});
+    const wasm_instance = {instance: wasm_instance_instance, module: mod};
+    console.log("INSTANTIATED WASM");
+    console.log(wasm_instance);
+    wasm_memory = wasm_instance.instance.exports.memory;
+    wasm_exports = wasm_instance.instance.exports;
+    //init_plugins(plugins);
     const time_machine = new TimeMachine(wasm_instance, rust_utilities);
     console.log("[tangle] Heap size: ", wasm_instance.instance.exports.memory.buffer.byteLength);
     external_log = (pointer, length) => {
-      const memory = time_machine._wasm_instance.instance.exports.memory;
+      const memory = time_machine._wasm_instance.exports.memory;
       const message_data = new Uint8Array(memory.buffer, pointer, length);
       const decoded_string = decoder2.decode(new Uint8Array(message_data));
       console.log(decoded_string);
     };
     {
+      console.log("WASM INSTANCE:")
+      console.log(wasm_instance);
       const main = wasm_instance.instance.exports["main"];
       if (main) {
         main();
@@ -842,7 +858,7 @@ var TimeMachine = class {
     let page_diff = (new_memory_data.byteLength - mem.buffer.byteLength) / WASM_PAGE_SIZE;
     if (page_diff < 0) {
       const old_instance = this._wasm_instance.instance;
-      this._wasm_instance.instance = await WebAssembly.instantiate(this._wasm_instance.module, this._imports);
+      this._wasm_instance.instance = await WebAssembly.instantiate(this._wasm_instance.module, {...this._imports, ...importObject});
       page_diff = (new_memory_data.byteLength - (this._wasm_instance?.instance.exports.memory).buffer.byteLength) / WASM_PAGE_SIZE;
       for (const [key, v] of Object.entries(old_instance.exports)) {
         if (key.slice(0, 3) == "wg_") {
@@ -966,26 +982,18 @@ var Tangle = class {
   }
   // private _debug_enabled = true;
   static async instanstiate(source, importObject, tangle_configuration) {
+    console.log("here");
     tangle_configuration ?? (tangle_configuration = {});
     tangle_configuration.accept_new_programs ?? (tangle_configuration.accept_new_programs = false);
     const wasm_binary = new Uint8Array(source);
     importObject ?? (importObject = {});
-    if (importObject) {
-      Object.values(importObject).forEach((moduleImports) => {
-        Object.entries(moduleImports).forEach(([importName, importValue]) => {
-          if (typeof importValue === "function") {
-            moduleImports[importName] = function(...args) {
-              const r = importValue(...args);
-              if (r !== void 0) {
-                console.log("[tangle warning] Tangle prevents WebAssembly imports from returning values because those values are unique per-peer and would cause a desync.");
-              }
-            };
-          }
-        });
-      });
-    }
+    console.log("before if false");
+    console.log("after if false");
+    console.log(wasm_binary);
     const time_machine = await TimeMachine.setup(wasm_binary, importObject, tangle_configuration.fixed_update_interval);
+    console.log("after time machine init");
     const tangle = new Tangle(time_machine);
+    console.log("after tangle init");
     tangle._configuration = tangle_configuration;
     const exports = await tangle.setup_inner(tangle_configuration.room_name, wasm_binary);
     return {
